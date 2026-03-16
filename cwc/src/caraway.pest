@@ -61,7 +61,7 @@ macro_content = @{ (!"}" ~ ANY)* }
 // === Functions & Identifiers ===
 func_call       = { (macro_call | path_identifier) ~ "(" ~ (expression ~ ("," ~ expression)*)? ~ ")" }
 path_identifier = @{ identifier ~ ("::" ~ identifier)* }
-identifier      = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+identifier      = @{ (ASCII_ALPHA) ~ (ASCII_ALPHANUMERIC | "_")* }
 
 // === Literals & Symbols ===
 number           = @{ ("-")? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
@@ -72,7 +72,7 @@ exported_comment = { string_lit }
 // === Operators ===
 add_op  = { "+" | "-" }
 mul_op  = { "*" | "/" }
-comp_op = { "<=" | ">=" | "<" | ">" | "=" }
+comp_op = { "<=" | ">=" | "<" | ">" | "==" }
 
 // === Whitespace & Comments ===
 WHITESPACE = _ { " " | "\t" | "\r" | "\n" }

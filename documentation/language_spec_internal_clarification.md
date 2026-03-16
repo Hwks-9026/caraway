@@ -13,7 +13,7 @@
 
 | operation | operator | example |
 | - | - | - |
-| comparison | =, <, <=, >, >= | if x = 5 |
+| comparison | ==, <, <=, >, >= | if x == 5 |
 | four function arithmetic | +, -, *, / | x = 6 + 7 * 9 |
 | exponentiation | ^ | 5 ^ (1/2) |
 | absolute value | &#124;x&#124; | &#124;-5&#124; = 5 |
