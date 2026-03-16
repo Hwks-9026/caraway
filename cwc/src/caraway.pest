@@ -1,0 +1,79 @@
+// === Top Level Structure ===
+program = { SOI ~ statement* ~ EOI }
+
+// 'statment' won't appear in the parse tree, only import_stmt, module_def, exported_comment, etc
+statement = _{
+    import_stmt
+  | export_stmt
+  | module_def
+  | declare
+  | update
+  | exported_comment
+  | expression
+}
+
+// === Imports and Exports ===
+import_stmt = { "import" ~ (macro_call | import_path) ~ ("as" ~ identifier)? }
+import_path = { identifier ~ ("::" ~ (identifier | asterix))* }
+asterix     = { "*" }
+
+export_stmt = { "export" ~ (use_stmt | module_def | declare | identifier) }
+use_stmt    = { "use" ~ import_path }
+
+module_def = { "module" ~ identifier ~ "{" ~ statement* ~ "}" }
+
+// === Assignments ===
+func_decl  = { path_identifier ~ "(" ~ (identifier ~ ("," ~ identifier)*)? ~ ")" }
+assignment_lhs = {func_decl | path_identifier | macro_call}
+declare = {assignment_lhs ~ assign_op ~ expression}
+update  = {assignment_lhs ~ arrow_op  ~ expression}
+
+assign_op = { "=" }
+arrow_op  = { "->" }
+
+// === Expressions & Math ===
+expression = { term ~ (comp_op ~ term)* }
+term       = { factor ~ (add_op ~ factor)* }
+factor     = { power ~ (mul_op ~ power)* }
+power      = { primary ~ ("^" ~ primary)* }
+
+// 'primary' won't appear in the parse tree, only number, func_call, macro_call, etc
+primary = _{
+    number
+  | func_call
+  | macro_call
+  | path_identifier
+  | "(" ~ expression ~ ")"
+  | block
+  | abs_val
+}
+
+// 'blocks of stuff'
+block = { "{" ~ statement* ~ "}" }
+abs_val = { "|" ~ expression ~ "|" }
+
+// === Macros ===
+macro_call    = { "@" ~ identifier ~ "{" ~ macro_content ~ "}" }
+
+// The content is raw text handled during macro evaluaton
+macro_content = @{ (!"}" ~ ANY)* }
+
+// === Functions & Identifiers ===
+func_call       = { (macro_call | path_identifier) ~ "(" ~ (expression ~ ("," ~ expression)*)? ~ ")" }
+path_identifier = @{ identifier ~ ("::" ~ identifier)* }
+identifier      = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+
+// === Literals & Symbols ===
+number           = @{ ("-")? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
+string_lit       = ${ "\"" ~ inner_str ~ "\"" }
+inner_str        = @{ (!"\"" ~ ANY)* }
+exported_comment = { string_lit }
+
+// === Operators ===
+add_op  = { "+" | "-" }
+mul_op  = { "*" | "/" }
+comp_op = { "<=" | ">=" | "<" | ">" | "=" }
+
+// === Whitespace & Comments ===
+WHITESPACE = _ { " " | "\t" | "\r" | "\n" }
+COMMENT    = _ { "--" ~ (!NEWLINE ~ ANY)* }
