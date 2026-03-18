@@ -46,6 +46,8 @@ primary = _{
   | "(" ~ expression ~ ")"
   | block
   | abs_val
+  | list
+  | point
 }
 
 // 'blocks of stuff'
@@ -67,6 +69,8 @@ identifier      = @{ (ASCII_ALPHA) ~ (ASCII_ALPHANUMERIC | "_")* }
 number           = @{ ("-")? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
 string_lit       = ${ "\"" ~ inner_str ~ "\"" }
 inner_str        = @{ (!"\"" ~ ANY)* }
+list             = { "[" ~ (primary ~ ",")* ~ primary? ~ "]" }
+point            = { "(" ~ primary ~ "," ~ primary ~ ")" }
 exported_comment = { string_lit }
 
 // === Operators ===

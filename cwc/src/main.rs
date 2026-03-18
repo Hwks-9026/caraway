@@ -1,17 +1,21 @@
 mod parser;
+mod frontend_types;
+mod ast;
+mod ast_builder;
 mod args;
 
-use pest::Parser;
+use std::sync::{Arc, Mutex};
+
 
 use args::parse_args;
-use parser::{CaraParser, Rule};
 
 const DEFAULT_CODE: &str = 
 r#"f(x) = x^2
 y = f(2*x)
 b = {4^2}
 
-g = 2
+g = [2, 3, 4]
+f = (1.67,2)
 "#;
 fn main() {
     let args = parse_args();
@@ -28,9 +32,14 @@ fn main() {
         }
         _ => {DEFAULT_CODE.to_string()}
     };
+    
+    let deps = Arc::new(Mutex::new(frontend_types::DependencyTracker::new()));
 
-    let parser = CaraParser::parse(Rule::program, &file).unwrap();
-    dbg!(parser);
+    let ast_result = parser::parse_file(&file, deps);
+    match ast_result.0 {
+        None => {},
+        Some(ast) => {dbg!(ast);}
+    }
 
 
 }
