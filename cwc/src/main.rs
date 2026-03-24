@@ -3,6 +3,7 @@ mod frontend_types;
 mod ast;
 mod ast_builder;
 mod args;
+mod graph;
 
 use std::sync::{Arc, Condvar, Mutex};
 use crate::ast::Program;
@@ -80,7 +81,7 @@ fn worker_loop(state: Arc<CompilerState>) {
         let mut tracker = state.tracker.lock().unwrap();
         tracker.active_workers -= 1;
 
-        if errors.len() > 0 {
+        if errors.len() == 0 {
             tracker.files.insert(current_file, FileState::Done(program_opt.unwrap()));
         } else {
             tracker.files.insert(current_file, FileState::Failed(errors));
