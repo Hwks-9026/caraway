@@ -22,7 +22,7 @@ impl<T> Node<T> {
 pub struct Graph<T: Clone + Eq + Hash> {
     nodes: Vec<Node<T>>,
     id_map: HashMap<T, usize>,
-    ordering: Option(Vec<T>)
+    ordering: Option<Vec<T>>
 }
 
 impl<T: Clone + Eq + Hash> Graph<T> {
@@ -30,7 +30,7 @@ impl<T: Clone + Eq + Hash> Graph<T> {
         Graph {
             nodes: Vec::new(),
             id_map: HashMap::new(),
-            ordering: Vec::new(),
+            ordering: None,
         }
     }
 
