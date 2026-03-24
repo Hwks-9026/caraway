@@ -15,7 +15,7 @@ y = f(2*x)
 b = {4^2}
 
 g = [2, 3, 4]
-f = (1.67,2)
+f = (1.67,2)()
 "#;
 fn main() {
     let args = parse_args();
@@ -36,9 +36,13 @@ fn main() {
     let deps = Arc::new(Mutex::new(frontend_types::DependencyTracker::new()));
 
     let ast_result = parser::parse_file(&file, deps);
-    match ast_result.0 {
-        None => {},
-        Some(ast) => {dbg!(ast);}
+    match ast_result.1.len() {
+        0 => {dbg!(ast_result.0);}
+        _ => {
+            for error in ast_result.1 {
+                error.pretty_print(&file, "filename".to_string())
+            }
+        },
     }
 
 

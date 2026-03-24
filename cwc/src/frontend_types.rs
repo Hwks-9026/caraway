@@ -5,7 +5,7 @@
 
 // TODO: Remove before first release, and make sure no warnings persist
 #![allow(dead_code)]
-
+use colored::Colorize;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,6 +24,48 @@ impl<'a> From<pest::Span<'a>> for Span {
 pub struct ParseError {
     pub span: Span,
     pub message: String,
+}
+impl ParseError {
+    pub fn pretty_print(&self, source: &String, filename: String) {
+        let mut line_number = 1;
+        let mut line_start = 0;
+        let mut current_line = "";
+
+        for (i, line) in source.lines().enumerate() {
+            // I'm not adding a windows check. This will be wrong on windows because
+            // for some reason they use \r\n for newlines sometimes????
+            let line_len = line.len() + 1; 
+            
+            if line_start + line_len > self.span.start {
+                line_number = i + 1;
+                current_line = line;
+                break;
+            }
+            line_start += line_len;
+        }
+
+        let prefix = &source[line_start..self.span.start];
+        let col_number = prefix.chars().count();
+        
+        let err_len = if self.span.end > self.span.start {
+            let end_idx = self.span.end.min(line_start + current_line.len());
+            let err_str = &source[self.span.start..end_idx];
+            err_str.chars().count().max(1)
+        } else {
+            1
+        };
+
+        // I based this on the way rust errors are printed
+        println!("{}: {}", "error".red().bold(), self.message.bold());
+        println!("  {} {}:{}:{}", "-->".blue().bold(), filename, line_number, col_number + 1);
+        println!("   {}", "|".blue().bold());
+        
+        println!("{:<2} {} {}", line_number.to_string().blue().bold(), "|".blue().bold(), current_line);
+        
+        let padding = " ".repeat(col_number);
+        let pointers = "^".repeat(err_len).red().bold();
+        println!("   {} {}{}\n", "|".blue().bold(), padding, pointers);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
