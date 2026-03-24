@@ -22,7 +22,7 @@ impl<T> Node<T> {
 pub struct Graph<T: Clone + Eq + Hash> {
     nodes: Vec<Node<T>>,
     id_map: HashMap<T, usize>,
-    ordering: Option<Vec<T>>
+    topological_ordering: Option<Vec<T>>
 }
 
 impl<T: Clone + Eq + Hash> Graph<T> {
@@ -30,11 +30,15 @@ impl<T: Clone + Eq + Hash> Graph<T> {
         Graph {
             nodes: Vec::new(),
             id_map: HashMap::new(),
-            ordering: None,
+            topological_ordering: None,
         }
     }
 
     pub fn add_node(&mut self, data: T) {
+        match &mut self.topological_ordering {
+            Some(ordering) => {ordering.push(data.clone())},
+            None => {}
+        }
         self.id_map.insert(data.clone(), self.nodes.len());
         self.nodes.push(Node { data, connections: Vec::new() });
     }
@@ -50,9 +54,15 @@ impl<T: Clone + Eq + Hash> Graph<T> {
         };
 
         self.nodes[source_id].add_connection(target_id);
+        self.topological_ordering = None;
         true
     }
-    pub fn compute_topological_order(&mut self) {
+    pub fn topological_order(&mut self) -> Option<Vec<T>> {
+        match self.topological_ordering {
+            Some(_) => { return self.topological_ordering.clone() },
+            None => {}
+        }
+
         let mut topological_order = Vec::new();
         let mut in_degrees = vec![0usize; self.nodes.len()];
         let mut zero_in_degrees = Vec::new();
@@ -85,13 +95,12 @@ impl<T: Clone + Eq + Hash> Graph<T> {
         }
 
         if topological_order.len() == self.nodes.len() {
-            self.ordering = Some(topological_order);
+            self.topological_ordering = Some(topological_order);
         } else {
-            self.ordering = None;
+            self.topological_ordering = None;
         }
-    }
-    pub fn topological_order(&self) -> Option<Vec<T>> {
-        return self.ordering.clone();
+
+        self.topological_ordering.clone()
     }
 }
 
@@ -129,7 +138,6 @@ mod tests {
         graph.add_connection(1,3);
         graph.add_connection(2,3);
 
-        graph.compute_topological_order();
         assert_eq!(graph.topological_order(), Some(vec![1,2,3]));
 
         let mut graph = Graph::new();
@@ -139,7 +147,6 @@ mod tests {
 
         graph.add_connection(1,2);
         graph.add_connection(2,3);
-        graph.compute_topological_order();
         assert_eq!(graph.topological_order(), Some(vec![1,2,3]));
     }
 
@@ -153,7 +160,6 @@ mod tests {
         graph.add_connection(2,3);
         graph.add_connection(3,1);
 
-        graph.compute_topological_order();
         assert_eq!(graph.topological_order(), None);
     }
 }
