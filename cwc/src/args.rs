@@ -11,6 +11,8 @@ use std::path::PathBuf;
 pub struct Args {
     #[arg(value_name = "FILE")]
     pub input: Option<PathBuf>,
+    #[arg(short = 'j', long = "jobs", value_name = "Number of Threads", default_value_t = 1)]
+    pub threads: usize
 }
 
 pub fn parse_args() -> Args {

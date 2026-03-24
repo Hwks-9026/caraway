@@ -13,12 +13,11 @@ statement = _{
 }
 
 // === Imports and Exports ===
-import_stmt = { "import" ~ (macro_call | import_path) ~ ("as" ~ identifier)? }
+import_stmt = { "use" ~ (macro_call | import_path) ~ ("as" ~ identifier)? }
 import_path = { identifier ~ ("::" ~ (identifier | asterix))* }
 asterix     = { "*" }
 
-export_stmt = { "export" ~ (use_stmt | module_def | declare | identifier) }
-use_stmt    = { "use" ~ import_path }
+export_stmt = { "pub" ~ (import_stmt | module_def | declare | identifier) }
 
 module_def = { "module" ~ identifier ~ "{" ~ statement* ~ "}" }
 

@@ -10,19 +10,19 @@ use crate::frontend_types::*;
 #[grammar = "caraway.pest"]
 pub struct CaraParser;
 
-pub fn parse_file(input: &str, deps: Arc<Mutex<DependencyTracker>>) -> (Option<Program>, Vec<ParseError>) {
-    let parse_result = CaraParser::parse(Rule::program, input);  // Run Pest parser
-    
+pub fn parse_file(input: &str, state: Arc<CompilerState>) -> (Option<Program>, Vec<ParseError>) {
+    let parse_result = CaraParser::parse(Rule::program, input);  
     match parse_result {
-        Ok(mut pairs) => { // No structural errors in the code: OK to try building AST
+        Ok(mut pairs) => { 
             let root = pairs.next().unwrap();
-            let mut builder = AstBuilder::new(deps);
             
-            let program = builder.build_program(root); // Build AST and collect all errors
+            // Pass the full state (Tracker + Condvar) to the builder
+            let mut builder = AstBuilder::new(Arc::clone(&state)); 
+            
+            let program = builder.build_program(root); 
             (Some(program), builder.errors)
         },
-        Err(pest_err) => { // Output structural error (for some reason pest only outputs one)
-            
+        Err(pest_err) => { 
             let span = match pest_err.location {
                 pest::error::InputLocation::Pos(p) => Span { start: p, end: p },
                 pest::error::InputLocation::Span((start, end)) => Span { start, end },
@@ -30,9 +30,7 @@ pub fn parse_file(input: &str, deps: Arc<Mutex<DependencyTracker>>) -> (Option<P
             
             let fatal_err = ParseError {
                 span,
-                // TODO: Add 'Colored' crate and color error messages properly
                 message: format!("Fatal syntax error: {}", pest_err.variant.message()),
-                                                                    
             };
             
             (None, vec![fatal_err])

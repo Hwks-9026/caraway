@@ -2,7 +2,7 @@ use crate::ast::*;
 use crate::frontend_types::*;
 use crate::parser::*;
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use pest::iterators::Pair;
 use pest::pratt_parser::{Assoc::*, Op, PrattParser};
 use std::sync::LazyLock;
@@ -17,14 +17,14 @@ static PRATT: LazyLock<PrattParser<Rule>> = LazyLock::new(|| {
 
 pub struct AstBuilder {
     pub errors: Vec<ParseError>,
-    pub deps: Arc<Mutex<DependencyTracker>>,
+    pub state: Arc<CompilerState>
 }
 
 impl AstBuilder {
-    pub fn new(deps: Arc<Mutex<DependencyTracker>>) -> Self {
+    pub fn new(state: Arc<CompilerState>) -> Self {
         Self {
             errors: Vec::new(),
-            deps,
+            state
         }
     }
 
@@ -70,6 +70,7 @@ impl AstBuilder {
     }
     
     fn build_import(&mut self, pair: Pair<Rule>) -> Option<ImportStmt> {
+        println!("Building import statement");
         let span = pair.as_span().into();
         let mut inner = pair.into_inner();
         
@@ -92,11 +93,13 @@ impl AstBuilder {
                 }
                 
                 // Add to dependency tracker
-                let dep_path = segments.join("/");
-                if let Ok(mut tracker) = self.deps.lock() {
-                    tracker.add_dependency(dep_path);
+                let dep_path = format!("{}.cara",segments.join("/"));
+                if let Ok(mut tracker) = self.state.tracker.lock() {
+                    let is_new_work = tracker.add_dependency(dep_path);
+                    if is_new_work {
+                        self.state.cvar.notify_all();
+                    }
                 }
-
                 ImportPath::Path(segments, has_asterix)
             },
             _ => {
@@ -119,14 +122,10 @@ impl AstBuilder {
         let inner = pair.into_inner().next()?; // Get what follows "export"
 
         match inner.as_rule() {
-            Rule::use_stmt => {
-                let import_path = inner.into_inner().next()?;
-                let path = import_path.into_inner().map(|p| p.as_str().to_string()).collect();
-                Some(ExportStmt::Use(path))
-            },
             Rule::module_def => self.build_module(inner).map(ExportStmt::ModuleDef),
             Rule::declare => self.build_declare(inner).map(ExportStmt::Declare),
             Rule::identifier => Some(ExportStmt::Identifier(inner.as_str().to_string())),
+            Rule::import_stmt => Some(ExportStmt::Use(self.build_import(inner).unwrap())),
             _ => {
                 self.push_error(inner.as_span(), "Invalid export target");
                 None

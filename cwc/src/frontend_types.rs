@@ -6,7 +6,10 @@
 // TODO: Remove before first release, and make sure no warnings persist
 #![allow(dead_code)]
 use colored::Colorize;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+use std::sync::{Mutex, Condvar};
+
+use crate::ast::Program;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Span {
@@ -68,24 +71,39 @@ impl ParseError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum FileState {
     Pending,
     Processing,
-    Done,
+    Done(Program),
+    Failed(Vec<ParseError>),
 }
 
 pub struct DependencyTracker {
     pub files: HashMap<String, FileState>,
+    pub queue: VecDeque<String>,
+    pub active_workers: usize,
 }
 
 impl DependencyTracker {
     pub fn new() -> Self {
-        Self { files: HashMap::new() }
+        Self { files: HashMap::new(), queue: VecDeque::new(), active_workers: 0}
     }
 
     /// Registers a newly discovered dependency if it hasn't been seen yet
-    pub fn add_dependency(&mut self, path: String) {
-        self.files.entry(path).or_insert(FileState::Pending);
+    /// returns true if newly added 
+    pub fn add_dependency(&mut self, path: String) -> bool {
+        if !self.files.contains_key(&path) {
+            println!("Added dependency {}", &path);
+            self.files.insert(path.clone(), FileState::Pending);
+            self.queue.push_back(path);
+            return true;
+        }
+        return false;
     }
+}
+
+pub struct CompilerState {
+    pub tracker: Mutex<DependencyTracker>,
+    pub cvar: Condvar,
 }

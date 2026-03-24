@@ -38,7 +38,7 @@ pub enum ImportPath {
 
 #[derive(Debug, Clone)]
 pub enum ExportStmt {
-    Use(Vec<String>),
+    Use(ImportStmt),
     ModuleDef(ModuleDef),
     Declare(Declare),
     Identifier(String),
