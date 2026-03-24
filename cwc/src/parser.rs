@@ -5,18 +5,19 @@ use std::sync::{Arc, Mutex};
 use crate::ast::Program;
 use crate::ast_builder::AstBuilder;
 use crate::frontend_types::*;
+use crate::macros::MacroRegistry;
 
 #[derive(Parser)]
 #[grammar = "caraway.pest"]
 pub struct CaraParser;
 
-pub fn parse_file(input: &str, deps: Arc<Mutex<DependencyTracker>>) -> (Option<Program>, Vec<ParseError>) {
+pub fn parse_file(input: &str, deps: Arc<Mutex<DependencyTracker>>, macros: MacroRegistry) -> (Option<Program>, Vec<ParseError>) {
     let parse_result = CaraParser::parse(Rule::program, input);  // Run Pest parser
     
     match parse_result {
         Ok(mut pairs) => { // No structural errors in the code: OK to try building AST
             let root = pairs.next().unwrap();
-            let mut builder = AstBuilder::new(deps);
+            let mut builder = AstBuilder::new(deps, macros);
             
             let program = builder.build_program(root); // Build AST and collect all errors
             (Some(program), builder.errors)

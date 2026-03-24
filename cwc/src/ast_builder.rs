@@ -1,5 +1,6 @@
 use crate::ast::*;
 use crate::frontend_types::*;
+use crate::macros::MacroRegistry;
 use crate::parser::*;
 
 use std::sync::{Arc, Mutex};
@@ -18,18 +19,20 @@ static PRATT: LazyLock<PrattParser<Rule>> = LazyLock::new(|| {
 pub struct AstBuilder {
     pub errors: Vec<ParseError>,
     pub deps: Arc<Mutex<DependencyTracker>>,
+    pub macros: MacroRegistry
 }
 
 impl AstBuilder {
-    pub fn new(deps: Arc<Mutex<DependencyTracker>>) -> Self {
+    pub fn new(deps: Arc<Mutex<DependencyTracker>>, macros: MacroRegistry) -> Self {
         Self {
             errors: Vec::new(),
             deps,
+            macros
         }
     }
 
     // TODO: Add 'Colored' crate and color error messages properly
-    fn push_error(&mut self, span: pest::Span, message: impl Into<String>) {
+    fn push_error(&mut self, span: Span, message: impl Into<String>) {
         self.errors.push(ParseError {
             span: span.into(),
             message: message.into(),
@@ -63,7 +66,7 @@ impl AstBuilder {
             Rule::exported_comment => self.build_exported_comment(pair).map(Statement::ExportedComment),
             Rule::expression => self.build_expression(pair).map(Statement::Expression),
             _ => {
-                self.push_error(span, format!("Unexpected rule in statement: {:?}", pair.as_rule()));
+                self.push_error(span.into(), format!("Unexpected rule in statement: {:?}", pair.as_rule()));
                 None
             }
         }
@@ -73,35 +76,11 @@ impl AstBuilder {
         let span = pair.as_span().into();
         let mut inner = pair.into_inner();
         
-        // Target *should* be a macro_call or import_path
-        let target = inner.next()?; 
-        let path = match target.as_rule() {
-            Rule::macro_call => {
-                let name = target.into_inner().next()?.as_str().to_string();
-                ImportPath::Macro(name)
-            },
-            Rule::import_path => {
-                let mut segments = Vec::new();
-                let mut has_asterix = false;
-                for p in target.into_inner() {
-                    if p.as_rule() == Rule::asterix {
-                        has_asterix = true;
-                    } else {
-                        segments.push(p.as_str().to_string());
-                    }
-                }
-                
-                // Add to dependency tracker
-                let dep_path = segments.join("/");
-                if let Ok(mut tracker) = self.deps.lock() {
-                    tracker.add_dependency(dep_path);
-                }
-
-                ImportPath::Path(segments, has_asterix)
-            },
-            _ => {
-                self.push_error(target.as_span(), "Invalid import target");
-                return None;
+        let inner_target = inner.next()?;
+        let path = match self.build_use_path(inner_target) {
+            None => return None,
+            Some(path) => {
+                path
             }
         };
 
@@ -128,7 +107,7 @@ impl AstBuilder {
             Rule::declare => self.build_declare(inner).map(ExportStmt::Declare),
             Rule::identifier => Some(ExportStmt::Identifier(inner.as_str().to_string())),
             _ => {
-                self.push_error(inner.as_span(), "Invalid export target");
+                self.push_error(inner.as_span().into(), "Invalid export target");
                 None
             }
         }
@@ -254,7 +233,7 @@ impl AstBuilder {
                 match pair.as_str().parse::<f64>() {
                     Ok(val) => Some(Primary::Number(val, span.into())),
                     Err(_) => {
-                        self.push_error(span, "Invalid number format");
+                        self.push_error(span.into(), "Invalid number format");
                         None
                     }
                 }
@@ -319,8 +298,32 @@ impl AstBuilder {
                 let expr = self.build_expression(pair)?;
                 Some(Primary::Expression(Box::new(expr), span.into()))
             },
+            Rule::macro_call => {
+                // Explicitly declare the type and extract it from the pair
+                let span: Span = pair.as_span().into(); 
+                
+                let mut inner = pair.into_inner();
+                let name = inner.next()?.as_str().to_string();
+                let content = inner.next()?.as_str().to_string(); 
+
+                // 1. Look up the macro via dynamic dispatch
+                if let Some(macro_impl) = self.macros.get(&name) {
+                    // 2. Execute the macro (pass 'span' directly since it's already converted)
+                    match macro_impl.expand_primary(&content, span) {
+                        Ok(primary) => Some(primary),
+                        Err(err_msg) => {
+                            self.push_error(span.into(), err_msg); // Need to convert back for pest::Span if push_error expects it, or update push_error to take your custom Span
+                            None
+                        }
+                    }
+                } else {
+                    // Note: ensure push_error takes your custom `Span` or convert accordingly
+                    self.push_error(span.into(), format!("Unknown macro: @{}", name));
+                    None
+                }
+            },
             _ => {
-                self.push_error(span, format!("Unknown primary token: {:?}", pair.as_rule()));
+                self.push_error(span.into(), format!("Unknown primary token: {:?}", pair.as_rule()));
                 None
             }
         }
@@ -343,6 +346,63 @@ impl AstBuilder {
             Rule::path_identifier => {
                 let path = inner.as_str().split("::").map(|s| s.to_string()).collect();
                 Some(AssignmentLhs::PathIdentifier { path, span })
+            },
+            Rule::macro_call => {
+                let mut macro_inner = inner.into_inner();
+                let name = macro_inner.next()?.as_str().to_string();
+                let content = macro_inner.next()?.as_str().to_string();
+
+                if let Some(macro_impl) = self.macros.get(&name) {
+                    match macro_impl.expand_lhs(&content, span) {
+                        Ok(lhs) => Some(lhs),
+                        Err(err_msg) => {
+                            self.push_error(span.into(), err_msg);
+                            None
+                        }
+                    }
+                } else {
+                    println!("{:?}", span);
+                    self.push_error(span.into(), format!("Unknown macro: @{}", name));
+                    None
+                }
+            },
+            _ => None
+        }
+
+    }
+
+    fn build_use_path(&mut self, pair: Pair<Rule>) -> Option<ImportPath> {
+        let inner = pair.into_inner().next()?;
+        let span: Span = inner.as_span().into();
+
+        match inner.as_rule() {
+            Rule::path_identifier => {
+                let mut path_vec: Vec<String> = inner.as_str().split("::").map(|s| s.to_string()).collect();
+                if let Some(last_el) = path_vec.last() && last_el == &"*".to_string() {
+                    path_vec.pop();
+                    Some(ImportPath::Path(path_vec, true))
+                }
+                else {
+                    Some(ImportPath::Path(path_vec, false))
+                }
+            },
+            Rule::macro_call => {
+                let mut macro_inner = inner.into_inner();
+                let name = macro_inner.next()?.as_str().to_string();
+                let content = macro_inner.next()?.as_str().to_string();
+
+                if let Some(macro_impl) = self.macros.get(&name) {
+                    match macro_impl.expand_import(&content, span) {
+                        Ok(import_path) => Some(import_path),
+                        Err(err_msg) => {
+                            self.push_error(span.into(), err_msg);
+                            None
+                        }
+                    }
+                } else {
+                    self.push_error(span.into(), format!("Unknown macro: @{}", name));
+                    None
+                }
             },
             _ => None
         }
