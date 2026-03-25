@@ -1,2 +1,3 @@
-use test_one::*
+use test_one::x
 pub use test_two::*
+use test_three::module_three::*

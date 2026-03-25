@@ -70,7 +70,6 @@ impl AstBuilder {
     }
     
     fn build_import(&mut self, pair: Pair<Rule>) -> Option<ImportStmt> {
-        println!("Building import statement");
         let span = pair.as_span().into();
         let mut inner = pair.into_inner();
         
@@ -84,7 +83,7 @@ impl AstBuilder {
             Rule::import_path => {
                 let mut segments = Vec::new();
                 let mut has_asterix = false;
-                for p in target.into_inner() {
+                for p in target.clone().into_inner() {
                     if p.as_rule() == Rule::asterix {
                         has_asterix = true;
                     } else {
@@ -92,14 +91,52 @@ impl AstBuilder {
                     }
                 }
                 
-                // Add to dependency tracker
-                let dep_path = format!("{}.cara",segments.join("/"));
+                let mut search_path = std::path::PathBuf::new();
+                for segment in &segments {
+                    search_path.push(segment);
+                }
+
+                let mut actual_file_path = None;
+                let mut internal_modules = Vec::new(); 
+
+                loop {
+                    let mut check_path = search_path.clone();
+                    check_path.set_extension("cara");
+
+                    if check_path.is_file() {
+                        actual_file_path = Some(check_path);
+                        break;
+                    }
+
+                    if let Some(segment) = search_path.file_name() {
+                        internal_modules.push(segment.to_string_lossy().to_string());
+                    } else {
+                        break;
+                    }
+
+                    if !search_path.pop() {
+                        break;
+                    }
+                }
+
+                let dep_path = match actual_file_path {
+                    Some(path) => path.to_string_lossy().to_string(),
+                    None => {
+                        self.push_error(
+                            target.as_span(), 
+                            &format!("Could not resolve import path: {}", segments.join("::"))
+                        );
+                        return None;
+                    }
+                };
+
                 if let Ok(mut tracker) = self.state.tracker.lock() {
                     let is_new_work = tracker.add_dependency(dep_path);
                     if is_new_work {
                         self.state.cvar.notify_all();
                     }
                 }
+                
                 ImportPath::Path(segments, has_asterix)
             },
             _ => {

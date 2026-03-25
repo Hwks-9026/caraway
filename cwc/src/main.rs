@@ -5,10 +5,10 @@ mod ast_builder;
 mod args;
 mod graph;
 
+use std::path::PathBuf;
 use std::sync::{Arc, Condvar, Mutex};
 use crate::ast::Program;
 use crate::frontend_types::{FileState, ParseError};
-
 
 use args::parse_args;
 
@@ -43,10 +43,9 @@ fn main() {
     }
 
     let final_tracker = shared_state.tracker.lock().unwrap();
-    println!("Compilation finished! Processed {} files.", final_tracker.files.len());
+    println!("[AST] Processed {} files.", final_tracker.files.len());
     
 }
-
 fn worker_loop(state: Arc<CompilerState>) {
     loop {
         let mut tracker = state.tracker.lock().unwrap();
@@ -58,29 +57,21 @@ fn worker_loop(state: Arc<CompilerState>) {
         if tracker.queue.is_empty() && tracker.active_workers == 0 {
             break;
         }
-
         let current_file = tracker.queue.pop_front().unwrap();
         tracker.files.insert(current_file.clone(), FileState::Processing);
         tracker.active_workers += 1;
-        
         drop(tracker);
-        // Print where the OS thinks we currently are
-        println!("CWD: {:?}", std::env::current_dir().unwrap());
-        println!("Trying to read: [{}]", current_file);
 
         let file_contents = match std::fs::read_to_string(&current_file) {
             Ok(contents) => contents,
             Err(e) => {
-                // This will tell us if it's NotFound, PermissionDenied, etc.
                 eprintln!("CRITICAL FS ERROR reading [{}]: {:?}", current_file, e);
                 String::new() // Fallback to empty string so the thread doesn't panic
             }
-        };
+        }; 
         let (program_opt, errors) = parser::parse_file(&file_contents, Arc::clone(&state));
-
         let mut tracker = state.tracker.lock().unwrap();
         tracker.active_workers -= 1;
-
         if errors.len() == 0 {
             tracker.files.insert(current_file, FileState::Done(program_opt.unwrap()));
         } else {
