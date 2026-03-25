@@ -5,16 +5,16 @@ mod ast_builder;
 mod args;
 mod graph;
 
-use std::path::PathBuf;
+use colored::Colorize;
 use std::sync::{Arc, Condvar, Mutex};
-use crate::ast::Program;
+use std::collections::HashMap;
 use crate::frontend_types::{FileState, ParseError};
 
 use args::parse_args;
 
 use crate::frontend_types::{CompilerState, DependencyTracker};
 
-const DEFAULT_PATH: &str = "src/main.cara";
+const DEFAULT_PATH: &str = "main.cara";
 fn main() {
     let args = parse_args();
 
@@ -43,7 +43,9 @@ fn main() {
     }
 
     let final_tracker = shared_state.tracker.lock().unwrap();
-    println!("[AST] Processed {} files.", final_tracker.files.len());
+    println!("{} Processed {} files.","[AST]".bold(), 
+        format!("{}",final_tracker.files.len()).bold().yellow());
+    if handle_results(&final_tracker.files) {return};
     
 }
 fn worker_loop(state: Arc<CompilerState>) {
@@ -79,5 +81,30 @@ fn worker_loop(state: Arc<CompilerState>) {
         }
 
         state.cvar.notify_all();
+    }
+}
+
+fn handle_results(files: &HashMap<String, FileState>) -> bool {
+    let mut had_error = false;
+
+    for (filename, state) in files {
+        if let FileState::Failed(errors) = state {
+            had_error = true;
+
+            // You’ll need a way to get the source string for this file
+            let source = std::fs::read_to_string(filename)
+                .unwrap_or_else(|_| "<could not read file>".to_string());
+
+            for err in errors {
+                err.pretty_print(&source, filename.clone());
+            }
+        }
+    }
+
+    if had_error {
+        true
+    } else {
+        println!("{} {}", "[AST]".bold(),"No AST errors.".bright_green());
+        false
     }
 }

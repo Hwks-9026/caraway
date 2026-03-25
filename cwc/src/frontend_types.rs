@@ -59,14 +59,14 @@ impl ParseError {
         };
 
         // I based this on the way rust errors are printed
-        println!("{}: {}", "error".red().bold(), self.message.bold());
+        println!("{}: {}", "error".bright_red().bold(), self.message.bold());
         println!("  {} {}:{}:{}", "-->".blue().bold(), filename, line_number, col_number + 1);
         println!("   {}", "|".blue().bold());
         
         println!("{:<2} {} {}", line_number.to_string().blue().bold(), "|".blue().bold(), current_line);
         
         let padding = " ".repeat(col_number);
-        let pointers = "^".repeat(err_len).red().bold();
+        let pointers = "^".repeat(err_len).bright_red().bold();
         println!("   {} {}{}\n", "|".blue().bold(), padding, pointers);
     }
 }
@@ -94,7 +94,7 @@ impl DependencyTracker {
     /// returns true if newly added 
     pub fn add_dependency(&mut self, path: String) -> bool {
         if !self.files.contains_key(&path) {
-            println!("Added dependency {}", &path);
+            println!("{} Added dependency {}", "[AST]".bold(),&path.bright_blue().bold());
             self.files.insert(path.clone(), FileState::Pending);
             self.queue.push_back(path);
             return true;
