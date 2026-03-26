@@ -25,7 +25,7 @@ module_def = { "module" ~ identifier ~ "{" ~ statement* ~ "}" }
 func_decl  = { path_identifier ~ "(" ~ (identifier ~ ("," ~ identifier)*)? ~ ")" }
 assignment_lhs = {func_decl | path_identifier | macro_call}
 declare = {assignment_lhs ~ assign_op ~ expression}
-update  = {(assignment_lhs ~ arrow_op  ~ expression}
+update  = {assignment_lhs ~ arrow_op  ~ expression}
 
 assign_op = { "=" }
 arrow_op  = { "->" }
