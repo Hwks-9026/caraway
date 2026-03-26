@@ -243,6 +243,7 @@ impl AstBuilder {
                    && current.as_rule() != Rule::abs_val
                    && current.as_rule() != Rule::list
                    && current.as_rule() != Rule::point
+                   && current.as_rule() != Rule::macro_call_def
                    && current.as_rule() != Rule::expression // Parentheses are for cowards
                 {
                     // TODO: There's probably a way to avoid cloning here, but my brain isn't
@@ -353,6 +354,12 @@ impl AstBuilder {
             },
             Rule::expression => Some(Primary::Expression(Box::new(self.build_expression(pair)?), span.into())),
             Rule::update => Some(Primary::Update(Box::new(self.build_update(pair)?), span.into())),
+            Rule::macro_call_def => {
+                let mut inner = pair.into_inner();
+                let identifier = inner.next()?.as_str().to_string();
+                let data = inner.next()?.as_str().to_string();
+                Some(Primary::MacroCall { name: identifier, content: data, span: span.into()}) 
+            }
             _ => {
                 self.push_error(span, format!("Unknown primary token: {:?}", pair.as_rule()));
                 None
@@ -378,6 +385,12 @@ impl AstBuilder {
                 let path = inner.as_str().split("::").map(|s| s.to_string()).collect();
                 Some(AssignmentLhs::PathIdentifier { path, span })
             },
+            Rule::macro_call => {
+                let mut macro_data = inner.into_inner().next()?.into_inner();
+                let identifier = macro_data.next()?.as_str().to_string();
+                let data = macro_data.next()?.as_str().to_string();
+                Some(AssignmentLhs::MacroCall { name: identifier, content: data, span: span.into()}) 
+            }
             _ => None
         }
     }

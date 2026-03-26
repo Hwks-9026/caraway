@@ -2,6 +2,9 @@ use test_one::x
 pub use test_two::*
 use test_three::module_three::*
 
+@redef{pi} = @hex{FFFFFF}
+a = b -> 2
+c = [1, 2, 3, 4, 5]
 A = {
     x -> x + 1
     y -> y + 1
@@ -12,3 +15,4 @@ B(x) = {
     5
     x -> 7
 }
+

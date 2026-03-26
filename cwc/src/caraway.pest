@@ -39,9 +39,9 @@ power      = { primary ~ ("^" ~ primary)* }
 // 'primary' won't appear in the parse tree, only number, func_call, macro_call, etc
 primary = _{
     update
+  | macro_call
   | number
   | func_call
-  | macro_call
   | path_identifier
   | "(" ~ expression ~ ")"
   | block
@@ -55,7 +55,8 @@ block = { "{" ~ statement* ~ "}" }
 abs_val = { "|" ~ expression ~ "|" }
 
 // === Macros ===
-macro_call    = { "@" ~ identifier ~ "{" ~ macro_content ~ "}" }
+macro_call     = { macro_call_def }
+macro_call_def = {"@" ~ identifier ~ "{" ~ macro_content ~ "}"}
 
 // The content is raw text handled during macro evaluaton
 macro_content = @{ (!"}" ~ ANY)* }
