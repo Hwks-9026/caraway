@@ -9,7 +9,6 @@ pub struct Program {
     pub span: Span,
 }
 
-// I find it really funny that this enum has to exist but it kind of does
 #[derive(Debug, Clone)]
 pub enum Statement {
     Import(ImportStmt),
@@ -97,7 +96,8 @@ pub enum Primary {
     AbsVal(Box<Expression>, Span),
     List(Vec<Primary>, Span),
     Point(Box<Primary>, Box<Primary>, Span),
-    Update(Box<Update>, Span)
+    Update(Box<Update>, Span),
+    DesmosLiteral(String)
 }
 
 #[derive(Debug, Clone)]

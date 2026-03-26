@@ -157,11 +157,18 @@ impl AstBuilder {
 
     fn build_export(&mut self, pair: Pair<Rule>) -> Option<ExportStmt> {
         let inner = pair.into_inner().next()?; // Get what follows "export"
-
         match inner.as_rule() {
             Rule::module_def => self.build_module(inner).map(ExportStmt::ModuleDef),
             Rule::declare => self.build_declare(inner).map(ExportStmt::Declare),
-            Rule::identifier => Some(ExportStmt::Identifier(inner.as_str().to_string())),
+            Rule::identifier => {
+                if inner.as_str() == "pub" {
+                    self.push_error(inner.as_span(), "Invalid export target");
+                    None
+                }
+                else {
+                    Some(ExportStmt::Identifier(inner.as_str().to_string()))
+                }
+            },
             Rule::import_stmt => Some(ExportStmt::Use(self.build_import(inner).unwrap())),
             _ => {
                 self.push_error(inner.as_span(), "Invalid export target");
@@ -406,7 +413,6 @@ fn get_expr_span(expr: &Expression) -> Span {
     }
 }
 
-// Do I look like I want to copy and paste this 10 times
 fn get_primary_span(prim: &Primary) -> Span {
     match prim {
         Primary::Number(_, span) => *span,
@@ -423,5 +429,6 @@ fn get_primary_span(prim: &Primary) -> Span {
         Primary::List(_, span) => *span,
         Primary::Point(_, _, span) => *span,
         Primary::Update(_, span) => *span,
+        Primary::DesmosLiteral(_) => Span{start: usize::MAX, end: usize::MAX}
     }
 }

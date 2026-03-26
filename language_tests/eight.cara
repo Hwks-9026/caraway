@@ -1,4 +1,3 @@
-x = 4
 
 module rfsopy {
     f(x) = 5 * x ^ 2

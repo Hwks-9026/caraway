@@ -1,0 +1,4 @@
+module rfsopy {
+    f(x) = 5 * x ^ 2
+}
+"i'm not sure how to make this take longer"
