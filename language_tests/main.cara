@@ -1,3 +1,14 @@
 use test_one::x
 pub use test_two::*
 use test_three::module_three::*
+
+A = {
+    x -> x + 1
+    y -> y + 1
+    z -> z - 1
+}
+
+B = {
+    5
+    x -> 7
+}

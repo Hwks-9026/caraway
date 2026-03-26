@@ -97,6 +97,7 @@ pub enum Primary {
     AbsVal(Box<Expression>, Span),
     List(Vec<Primary>, Span),
     Point(Box<Primary>, Box<Primary>, Span),
+    Update(Box<Update>, Span)
 }
 
 #[derive(Debug, Clone)]

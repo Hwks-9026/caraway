@@ -25,7 +25,7 @@ module_def = { "module" ~ identifier ~ "{" ~ statement* ~ "}" }
 func_decl  = { path_identifier ~ "(" ~ (identifier ~ ("," ~ identifier)*)? ~ ")" }
 assignment_lhs = {func_decl | path_identifier | macro_call}
 declare = {assignment_lhs ~ assign_op ~ expression}
-update  = {assignment_lhs ~ arrow_op  ~ expression}
+update  = {(assignment_lhs ~ arrow_op  ~ expression}
 
 assign_op = { "=" }
 arrow_op  = { "->" }
@@ -38,7 +38,8 @@ power      = { primary ~ ("^" ~ primary)* }
 
 // 'primary' won't appear in the parse tree, only number, func_call, macro_call, etc
 primary = _{
-    number
+    update
+  | number
   | func_call
   | macro_call
   | path_identifier

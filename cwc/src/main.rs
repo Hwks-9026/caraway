@@ -63,18 +63,19 @@ fn worker_loop(state: Arc<CompilerState>) {
         tracker.files.insert(current_file.clone(), FileState::Processing);
         tracker.active_workers += 1;
         drop(tracker);
-
+        let mut failed = false;
         let file_contents = match std::fs::read_to_string(&current_file) {
             Ok(contents) => contents,
             Err(e) => {
-                eprintln!("CRITICAL FS ERROR reading [{}]: {:?}", current_file, e);
+                eprintln!("{} reading [{}]: {:?}","[File System Error]".red().bold(), current_file, e);
+                failed = true;
                 String::new() // Fallback to empty string so the thread doesn't panic
             }
         }; 
         let (program_opt, errors) = parser::parse_file(&file_contents, Arc::clone(&state));
         let mut tracker = state.tracker.lock().unwrap();
         tracker.active_workers -= 1;
-        if errors.len() == 0 {
+        if errors.len() == 0 && !failed {
             tracker.files.insert(current_file, FileState::Done(program_opt.unwrap()));
         } else {
             tracker.files.insert(current_file, FileState::Failed(errors));

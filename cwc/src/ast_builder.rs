@@ -351,10 +351,8 @@ impl AstBuilder {
                 
                 Some(Primary::Point(x, y, span.into()))
             },
-            Rule::expression => {
-                let expr = self.build_expression(pair)?;
-                Some(Primary::Expression(Box::new(expr), span.into()))
-            },
+            Rule::expression => Some(Primary::Expression(Box::new(self.build_expression(pair)?), span.into())),
+            Rule::update => Some(Primary::Update(Box::new(self.build_update(pair)?), span.into())),
             _ => {
                 self.push_error(span, format!("Unknown primary token: {:?}", pair.as_rule()));
                 None
@@ -411,5 +409,6 @@ fn get_primary_span(prim: &Primary) -> Span {
         Primary::AbsVal(_, span) => *span,
         Primary::List(_, span) => *span,
         Primary::Point(_, _, span) => *span,
+        Primary::Update(_, span) => *span,
     }
 }
