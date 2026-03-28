@@ -28,7 +28,6 @@ impl AstBuilder {
         }
     }
 
-    // TODO: Add 'Colored' crate and color error messages properly
     fn push_error(&mut self, span: pest::Span, message: impl Into<String>) {
         self.errors.push(ParseError {
             span: span.into(),

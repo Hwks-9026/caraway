@@ -2,7 +2,8 @@
 
 **Note: until 1.0, this is very subject to change, and not all language features may actually be implemented by the compiler. Consult [README.md](../README.md) for a list of implemented language features.
 
-Assign variables using the '=' assignment operator.
+Declare variables using the '=' assignment operator.
+This can only be done once per identifier.
 ```caraway
 x = 4
 ```
@@ -21,6 +22,19 @@ g(x) = {
 }
 ```
 The value of will then be the result of the last expression, after evaluating each statement.
+
+The following are a list of valid operators
+
+| operation | operator | example |
+| - | - | - |
+| variable declaration | = | x = 5 |
+| assignment | -> | x -> 5 |
+| function call | () | example_function(param1, param2, ...) |
+| namespace access | :: | import std::math |
+| comparison | ==, <, <=, >, >= | if x == 5 |
+| four function arithmetic | +, -, *, / | x = 6 + 7 * 9 |
+| exponentiation | ^ | 5 ^ (1/2) |
+| absolute value | &#124;x&#124; | &#124;-5&#124; == 5 |
 
 Single line code comments (not exported to desmos) can be made with a `--`.
 ```caraway
@@ -97,7 +111,6 @@ Execute arbitrary python functions, and assign the results to variables. Import 
 All variables and functions in a python file are considered fair game for use in the `@py` macro, but since they can't be 'exported' from python,
 you must use a fully qualified path to the function or variable you need.
 
-***TODO: Explain how and what the return values need to be to be valid***
 ```caraway
 import @python{"path/to/python/file.py"} as file -- exposes all python functions as callable with literal arguments at compile time
 
@@ -106,8 +119,6 @@ image_list = @py{file::load_image_data("path/to/image.png")} -- calls python fun
 rows = @py{file::rows}
 columns = @py{file::colums} -- loading variables from a python file also works
 ```
-A current constraint of the compiler is that python code cannot accept caraway variables, only literals like strings, numbers, etc. 
-Changing this would involve exposing an API for macros to evaluate arbitrary caraway expressions at compile time.
 
 
 
