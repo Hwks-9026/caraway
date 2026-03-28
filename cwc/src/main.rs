@@ -4,6 +4,7 @@ mod ast;
 mod ast_builder;
 mod args;
 mod graph;
+mod resolve;
 
 use colored::Colorize;
 use std::sync::{Arc, Condvar, Mutex};
@@ -46,7 +47,7 @@ fn main() {
     println!("{} Processed {} files.","[AST]".bold(), 
         format!("{}",final_tracker.files.len()).bold().yellow());
     if handle_results(&final_tracker.files) {return};
-    
+    if check_dependencies(&final_tracker.files) {return};
 }
 fn worker_loop(state: Arc<CompilerState>) {
     loop {
@@ -108,4 +109,21 @@ fn handle_results(files: &HashMap<String, FileState>) -> bool {
         println!("{} {}", "[AST]".bold(),"No AST errors.".bright_green());
         false
     }
+}
+
+fn check_dependencies(files: &HashMap<String, FileState>) -> bool {
+    let errors = resolve::resolve_dependencies(files);
+    if errors.is_empty() {
+        println!("{} {}", "[Resolve]".bold(), "No dependency errors.".bright_green());
+        return false;
+    }
+
+    for err in &errors {
+        if err.file.is_empty() {
+            eprintln!("{} {}", "[Resolve Error]".red().bold(), err.message);
+        } else {
+            eprintln!("{} [{}]: {}", "[Resolve Error]".red().bold(), err.file, err.message);
+        }
+    }
+    true
 }
