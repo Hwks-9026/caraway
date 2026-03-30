@@ -1,6 +1,11 @@
 use test_one::x
 pub use test_two::*
 use test_three::module_three::*
+
+use four
+use five
+use six
+use seven
 module test_four {
     x = 5
 }

@@ -1,4 +1,4 @@
-use main::x as y
+use main::test_four::x as y
 
 
 module rfsopy {

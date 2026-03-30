@@ -34,7 +34,7 @@ fn lhs_name(lhs: &AssignmentLhs) -> Option<String> {
     match lhs {
         AssignmentLhs::FuncDecl       { name, .. } => Some(name.join("::")),
         AssignmentLhs::PathIdentifier { path, .. } => Some(path.join("::")),
-        AssignmentLhs::MacroCall      {                    .. } => None,
+        AssignmentLhs::MacroCall      {       .. } => None,
     }
 }
 
