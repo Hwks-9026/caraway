@@ -5,6 +5,7 @@ mod ast_builder;
 mod args;
 mod graph;
 mod resolve;
+mod merge;
 
 use colored::Colorize;
 use std::sync::{Arc, Condvar, Mutex};
@@ -43,11 +44,15 @@ fn main() {
         handle.join().unwrap();
     }
 
-    let final_tracker = shared_state.tracker.lock().unwrap();
+    let mut final_tracker = shared_state.tracker.lock().unwrap();
+    let files = std::mem::take(&mut final_tracker.files);
     println!("{} Processed {} files.","[AST]".bold(), 
-        format!("{}",final_tracker.files.len()).bold().yellow());
-    if handle_results(&final_tracker.files) {return};
-    if check_dependencies(&final_tracker.files) {return};
+        format!("{}",files.len()).bold().yellow());
+    if handle_results(&files) {return};
+    if check_dependencies(&files) {return};
+
+    let merged_program = crate::merge::AstFlattener::new().flatten(files);
+    dbg!(merged_program);
 }
 fn worker_loop(state: Arc<CompilerState>) {
     loop {
