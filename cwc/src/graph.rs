@@ -237,8 +237,91 @@ impl<T: Clone + Eq + Hash> Graph<T> {
         dag
     }
 
-    pub fn list_cycles(&self) -> Option<Vec<Vec<T>>> {
-        None
+    // Calling assumption: Input is a non-trivial SCC
+    fn cycles_from_node(
+        &self,
+        starting_node: usize,
+        node: usize,
+        stack: &mut Vec<usize>,
+        blocked: &mut Vec<bool>,
+        blocking: &mut Vec<HashSet<usize>>,
+    ) -> Vec<Vec<T>> {
+        stack.push(node);
+        blocked[node] = true;
+
+        let mut output = Vec::new();
+
+        for &other in self.connections[node].iter() {
+            if other == starting_node {
+                stack.push(other);
+                output.push(stack.iter().map(|&n| self.nodes[n].clone()).collect());
+                stack.pop();
+            } else if !blocked[other] {
+                output.extend(self.cycles_from_node(
+                    starting_node,
+                    other,
+                    stack,
+                    blocked,
+                    blocking,
+                ));
+            }
+        }
+
+        if !output.is_empty() {
+            unblock(node, blocked, blocking);
+        } else {
+            for &other in self.connections[node].iter() {
+                blocking[other].insert(node);
+            }
+        }
+
+        stack.pop();
+
+        output
+    }
+
+    pub fn list_cycles(&self) -> Vec<Vec<T>> {
+        let mut work_queue: Vec<Graph<T>> = self.scc_dag().nodes;
+
+        let mut cycles = Vec::new();
+
+        while let Some(mut scc_graph) = work_queue.pop() {
+            if scc_graph.nodes.len() <= 1 {
+                continue;
+            }
+            let n = scc_graph.nodes.len();
+
+            let new_cycles = scc_graph.cycles_from_node(
+                n - 1,
+                n - 1,
+                &mut vec![],
+                &mut vec![false; n],
+                &mut vec![HashSet::new(); n],
+            );
+            cycles.extend(new_cycles);
+
+            _ = scc_graph.nodes.pop();
+            _ = scc_graph.connections.pop();
+
+            for l in scc_graph.connections.iter_mut() {
+                l.remove(&(n - 1));
+            }
+
+            for sub_scc in scc_graph.scc_dag().nodes {
+                work_queue.push(sub_scc);
+            }
+        }
+
+        cycles
+    }
+}
+
+fn unblock(u: usize, blocked: &mut Vec<bool>, blocking: &mut Vec<HashSet<usize>>) {
+    blocked[u] = false;
+    let blocking_copy = blocking[u].clone();
+    blocking[u].clear();
+    for w in blocking_copy {
+        unblock(w, blocked, blocking);
     }
 }
 
@@ -391,7 +474,21 @@ mod tests {
         // 1 -> 2 -> 1
         // 1 -> 3 -> 2 -> 1
 
-        assert_ne!(graph.list_cycles(), None);
-        assert_eq!(graph.list_cycles().unwrap().len(), 2);
+        let cycles: HashSet<Vec<(i32, i32)>> = graph
+            .list_cycles()
+            .iter()
+            .map(|c| {
+                let mut edges: Vec<(i32, i32)> = c.windows(2).map(|w| (w[0], w[1])).collect();
+                edges.sort();
+                edges
+            })
+            .collect();
+        let expected: HashSet<Vec<(i32, i32)>> = [
+            vec![(1, 2), (2, 1)],
+            vec![(1, 3), (2, 1), (3, 2)],
+        ]
+        .into_iter()
+        .collect();
+        assert_eq!(cycles, expected);
     }
 }

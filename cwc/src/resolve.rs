@@ -141,10 +141,20 @@ pub fn resolve_dependencies(files: &HashMap<String, FileState>) -> Vec<ResolveEr
     }
 
     if graph.topological_order().is_none() {
-        errors.push(ResolveError {
-            file: String::new(),
-            message: "Circular import detected between files".to_string(),
-        });
+        let cycles = graph.list_cycles();
+        if cycles.is_empty() {
+            errors.push(ResolveError {
+                file: String::new(),
+                message: "Circular import detected between files".to_string(),
+            });
+        } else {
+            for cycle in cycles {
+                errors.push(ResolveError {
+                    file: String::new(),
+                    message: format!("Circular import: {}", cycle.join(" -> ")),
+                });
+            }
+        }
     }
 
     errors
