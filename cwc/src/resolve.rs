@@ -10,11 +10,18 @@ pub struct ResolveError {
 }
 
 fn qualified_name(prefix: &str, name: &str) -> String {
-    if prefix.is_empty() { name.to_string() } else { format!("{}::{}", prefix, name) }
+    if prefix.is_empty() {
+        name.to_string()
+    } else {
+        format!("{}::{}", prefix, name)
+    }
 }
 
 // Tries progressively shorter prefixes until we get a match.
-fn resolve_import_path(segments: &[String], known_files: &HashSet<String>) -> Option<(String, Vec<String>)> {
+fn resolve_import_path(
+    segments: &[String],
+    known_files: &HashSet<String>,
+) -> Option<(String, Vec<String>)> {
     for split in (1..=segments.len()).rev() {
         let mut search_path = std::path::PathBuf::new();
         for segment in &segments[..split] {
@@ -32,9 +39,9 @@ fn resolve_import_path(segments: &[String], known_files: &HashSet<String>) -> Op
 
 fn lhs_name(lhs: &AssignmentLhs) -> Option<String> {
     match lhs {
-        AssignmentLhs::FuncDecl       { name, .. } => Some(name.join("::")),
+        AssignmentLhs::FuncDecl { name, .. } => Some(name.join("::")),
         AssignmentLhs::PathIdentifier { path, .. } => Some(path.join("::")),
-        AssignmentLhs::MacroCall      {       .. } => None,
+        AssignmentLhs::MacroCall { .. } => None,
     }
 }
 
@@ -46,23 +53,23 @@ fn collect_declarations(statements: &[Statement], prefix: &str, out: &mut HashSe
                 if let Some(name) = lhs_name(&decl.lhs) {
                     out.insert(qualified_name(prefix, &name));
                 }
-            },
+            }
             Statement::ModuleDef(module) => {
                 let qname = qualified_name(prefix, &module.name);
                 out.insert(qname.clone());
                 collect_declarations(&module.statements, &qname, out);
-            },
+            }
             Statement::Export(ExportStmt::Declare(decl)) => {
                 if let Some(name) = lhs_name(&decl.lhs) {
                     out.insert(qualified_name(prefix, &name));
                 }
-            },
+            }
             Statement::Export(ExportStmt::ModuleDef(module)) => {
                 let qname = qualified_name(prefix, &module.name);
                 out.insert(qname.clone());
                 collect_declarations(&module.statements, &qname, out);
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 }
@@ -104,13 +111,15 @@ pub fn resolve_dependencies(files: &HashMap<String, FileState>) -> Vec<ResolveEr
 
     let mut graph: Graph<String> = Graph::new();
     for path in declarations.keys() {
-        graph.add_node(path.clone());
+        graph.add_node(&path);
     }
 
     for (path, state) in files {
         if let FileState::Done(program) = state {
-            for (source_file, symbol_path, wildcard) in collect_imports(&program.statements, &known_files) {
-                graph.add_connection(path.clone(), source_file.clone());
+            for (source_file, symbol_path, wildcard) in
+                collect_imports(&program.statements, &known_files)
+            {
+                graph.add_connection(&path, &source_file);
 
                 if wildcard || symbol_path.is_empty() {
                     continue;
@@ -120,7 +129,10 @@ pub fn resolve_dependencies(files: &HashMap<String, FileState>) -> Vec<ResolveEr
                     if !target_decls.contains(&symbol) {
                         errors.push(ResolveError {
                             file: path.clone(),
-                            message: format!("Unresolved import: '{}' not found in '{}'", symbol, source_file),
+                            message: format!(
+                                "Unresolved import: '{}' not found in '{}'",
+                                symbol, source_file
+                            ),
                         });
                     }
                 }
