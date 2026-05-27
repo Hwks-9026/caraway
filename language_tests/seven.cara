@@ -1,5 +1,0 @@
-use nine
-
-module rfsopy {
-    f(x) = 5 * x ^ 2
-}

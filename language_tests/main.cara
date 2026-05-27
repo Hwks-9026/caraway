@@ -1,25 +1,10 @@
-use test_one::x
-pub use test_two::*
-use test_three::module_three::*
+use test
+y = test::x
 
-use four
-use five
-use six
-use seven
-module test_four {
-    x = 5
-}
-@redef{pi} = @hex{FFFFFF}
-a = b -> 2
-c = [1, 2, 3, 4, 5]
-A = {
-    x -> x + 1
-    y -> y + 1
-    z -> z - 1
+module circ_mod_one {
+    function_one(x) = circ_mod_two::function_two(x + 1)
 }
 
-B(x) = {
-    5
-    x -> 7
+module circ_mod_two {
+    function_two(x) = circ_mod_one::function_one(x - 1)
 }
-

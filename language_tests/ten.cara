@@ -1,6 +1,0 @@
-use main::test_four::x as y
-
-
-module rfsopy {
-    f(x) = 5 * x ^ 2
-}

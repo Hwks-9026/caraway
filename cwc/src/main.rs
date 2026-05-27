@@ -52,7 +52,7 @@ fn main() {
     if check_dependencies(&files) {return};
 
     let merged_program = crate::merge::AstFlattener::new().flatten(files);
-    dbg!(merged_program);
+    //dbg!(merged_program);
 }
 fn worker_loop(state: Arc<CompilerState>) {
     loop {
