@@ -52,6 +52,25 @@ ln -s ./target/release/cwc ~/.local/bin/
 
 To test the compiler's functionality, try running it in the project directory for any of the example projects located in `./examples`
 
+## Using the Decompiler
+
+The decompiler entrypoint currently accepts compiled Desmos JSON input and confirms it was received.
+This is the first step toward converting Desmos JSON back into Caraway code.
+
+Run the decompiler with:
+```bash
+cd ./cwc
+cargo run --bin desmos_decompiler
+```
+
+When prompted, follow these exact steps:
+1. Open your Desmos graph in your browser.
+2. Open the inspect element page (Developer Tools).
+3. Go to the Console tab.
+4. Enter: `state = Calc.getState()`
+5. Enter: `copy(JSON.stringify(state, null, 2))`
+6. The compiled Desmos JSON is now copied to your clipboard. Paste it here and end input.
+
 ## Language Overview
 Caraway's syntax is designed to be readable for those with some background in programming and knowlege of Desmos. Caraway adheres to some of the quirks of Desmos to avoid using high-overhead workarounds.
 
